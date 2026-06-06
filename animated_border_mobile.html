@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Animated Border</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body, html {
+  background-color: transparent !important;
+  background-image: none !important;
+  overflow: hidden;
+  width: 1080px;
+  height: 1920px;
+}
+canvas { position: absolute; top: 0; left: 0; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W = 1080, H = 1920, pad = 10, cx = 70;
+
+function buildPerimeter() {
+  var pts = [];
+  var p = pad;
+  // top
+  for (var i = 0; i <= 100; i++) pts.push([p + cx + (W - 2*p - 2*cx) * i/100, p]);
+  // right
+  for (var i = 0; i <= 100; i++) pts.push([W-p, p + cx + (H - 2*p - 2*cx) * i/100]);
+  // bottom
+  for (var i = 0; i <= 100; i++) pts.push([W - p - cx - (W - 2*p - 2*cx) * i/100, H-p]);
+  // left
+  for (var i = 0; i <= 100; i++) pts.push([p, H - p - cx - (H - 2*p - 2*cx) * i/100]);
+  return pts;
+}
+
+var perimeter = buildPerimeter();
+var total = perimeter.length;
+var progress = 0;
+var trailLength = 80;
+var boltLength = 12;
+
+function getPoint(i) {
+  return perimeter[((i % total) + total) % total];
+}
+
+function jitterPoint(pt, prev, amount) {
+  var dx = pt[0] - prev[0];
+  var dy = pt[1] - prev[1];
+  var len = Math.sqrt(dx*dx + dy*dy) || 1;
+  var nx = -dy/len, ny = dx/len;
+  var off = (Math.random() - 0.5) * amount;
+  return [pt[0] + nx * off, pt[1] + ny * off];
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  progress = (progress + 1.2) % total;
+
+  // faint base border cyan
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  var p0 = getPoint(0);
+  ctx.moveTo(p0[0], p0[1]);
+  for (var i = 1; i < total; i++) ctx.lineTo(getPoint(i)[0], getPoint(i)[1]);
+  ctx.closePath();
+  ctx.stroke();
+
+  // faint base border magenta
+  ctx.strokeStyle = 'rgba(255,0,255,0.06)';
+  ctx.beginPath();
+  ctx.moveTo(p0[0], p0[1]);
+  for (var i = 1; i < total; i++) ctx.lineTo(getPoint(i)[0], getPoint(i)[1]);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // trail
+  for (var t = trailLength; t >= 0; t--) {
+    var idx = Math.floor(progress) - t;
+    var pt = getPoint(idx);
+    var prev = getPoint(idx - 1);
+    var alpha = (1 - t / trailLength) * 0.6;
+    var color = t < trailLength * 0.5 ? '#ff00ff' : '#00ffff';
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = color;
+    ctx.beginPath();
+    ctx.moveTo(prev[0], prev[1]);
+    ctx.lineTo(pt[0], pt[1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // electric bolt head
+  for (var b = 0; b < boltLength; b++) {
+    var idx = Math.floor(progress) + b;
+    var pt = getPoint(idx);
+    var prev = getPoint(idx - 1);
+    var jpt = jitterPoint(pt, prev, 6 - b * 0.4);
+    var alpha = 1 - b / boltLength;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 6;
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = '#00ffff';
+    ctx.beginPath();
+    ctx.moveTo(prev[0], prev[1]);
+    ctx.lineTo(jpt[0], jpt[1]);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(prev[0], prev[1]);
+    ctx.lineTo(jpt[0], jpt[1]);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // corners
+  var p = pad;
+  ctx.save();
+  ctx.strokeStyle = '#00ffff';
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = '#00ffff';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.moveTo(p, p+cx); ctx.lineTo(p,p); ctx.lineTo(p+cx,p); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-p-cx, p); ctx.lineTo(W-p,p); ctx.lineTo(W-p,p+cx); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(p, H-p-cx); ctx.lineTo(p,H-p); ctx.lineTo(p+cx,H-p); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-p-cx, H-p); ctx.lineTo(W-p,H-p); ctx.lineTo(W-p,H-p-cx); ctx.stroke();
+  ctx.restore();
+
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
